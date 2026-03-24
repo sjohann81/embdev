@@ -47,7 +47,7 @@ int getchar(void)
     return c;
 }
 
-int bsp_init(void)
+__attribute__((weak)) int bsp_init(void)
 {
     /* select UART0 pins */
    	PAALTCFG0 |= (MASK_UART0_TX | MASK_UART0_RX);
@@ -71,7 +71,7 @@ int getchar(void)
     return DEBUG_ADDR;
 }
 
-int bsp_init(void)
+__attribute__((weak)) int bsp_init(void)
 {
     return 0;
 }
