@@ -2,6 +2,7 @@
 #define UART_H
 
 #include <hf-risc.h>
+#include <stddef.h>
 
 /* the abstract UART device type */
 typedef struct uart_dev uart_dev_t;
