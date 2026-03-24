@@ -19,6 +19,9 @@ _bss_clear:
 
 	# enable global interrupts
 	jal	ra, irq_enable
+    
+	# call bsp init
+	jal ra, bsp_init
 
 	# jump to main
 	jal	ra, main

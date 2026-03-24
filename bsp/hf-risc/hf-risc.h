@@ -461,4 +461,8 @@ typedef volatile struct __attribute__((packed, aligned(4))) {
 #define ADC2				(*(volatile uint32_t *)(ADC_BASE + 0x4800))
 #define ADC3				(*(volatile uint32_t *)(ADC_BASE + 0x4c00))
 
+int bsp_init(void);
+void bsp_delay_ms(uint32_t msec);
+void bsp_delay_us(uint32_t usec);
+
 #endif
