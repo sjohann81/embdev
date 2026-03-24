@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 void *memcpy(void *dest, const void *src, size_t n)
 {
@@ -61,7 +62,7 @@ void *memchr(const void *s, int c, size_t n)
 
 	while (n--) {
 		if (*p == (unsigned char)c)
-			return (void *)p;
+			return (void *)(uintptr_t)p;
 		p++;
 	}
 	
@@ -154,7 +155,7 @@ char *strchr(const char *s, int c)
 {
 	do {
 		if (*s == (char)c)
-			return (char *)s;
+			return (char *)(uintptr_t)s;
 	} while (*s++);
 	
 	return NULL;
@@ -169,19 +170,19 @@ char *strrchr(const char *s, int c)
 			last = s;
 	} while (*s++);
 	
-	return (char *)last;
+	return (char *)(uintptr_t)last;
 }
 
 char *strstr(const char *haystack, const char *needle)
 {
 	if (!*needle)
-		return (char *)haystack;
+		return (char *)(uintptr_t)haystack;
 		
 	size_t nlen = strlen(needle);
 	
 	while (*haystack) {
 		if (*haystack == *needle && memcmp(haystack, needle, nlen) == 0)
-			return (char *)haystack;
+			return (char *)(uintptr_t)haystack;
 		haystack++;
 	}
 	
@@ -297,7 +298,7 @@ char *strpbrk(const char *s, const char *accept)
 		const char *a = accept;
 		while (*a) {
 			if (*s == *a)
-				return (char *)s;
+				return (char *)(uintptr_t)s;
 			a++;
 		}
 		s++;

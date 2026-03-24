@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 static int is_space(char c)
 {
@@ -59,7 +60,7 @@ long strtol(const char *s, char **endptr, int base)
 	}
 
 	if (endptr)
-		*endptr = any ? (char *)s : (char *)(s - (neg ? 1 : 0));
+		*endptr = any ? (char *)(uintptr_t)s : (char *)(uintptr_t)(s - (neg ? 1 : 0));
 		
 	return neg ? -result : result;
 }
@@ -90,7 +91,7 @@ unsigned long strtoul(const char *s, char **endptr, int base)
 	}
 
 	if (endptr)
-		*endptr = (char *)s;
+		*endptr = (char *)(uintptr_t)s;
 		
 	return result;
 }
@@ -201,7 +202,7 @@ void *bsearch(const void *key, const void *base,
 			if (cmp > 0) {
 				lo = mid + size;
 			} else {
-				return (void *)mid;
+				return (void *)(uintptr_t)mid;
 			}
 		}
 	}
