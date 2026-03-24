@@ -453,21 +453,9 @@ int scanf(const char *fmt, ...)
 	return ret;
 }
 
-static int unget_buffer = -1;
-
 __attribute__((weak)) int getchar(void)
 {
 	return EOF;
-}
-
-int ungetc(int c)
-{
-	if (c == EOF || unget_buffer != -1)
-		return EOF;
-		
-	unget_buffer = c;
-	
-	return c;
 }
 
 #endif
