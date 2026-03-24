@@ -1,11 +1,9 @@
 #include <hf-risc.h>
 #include <stdio.h>
+#include <interrupt.h>
 
-/* defined interrupt handlers */
-void dummy_handler(void);
+/* interrupt handlers */
 void irq0_handler(void);
-
-/* user defined interrupt handlers */
 void irq1_handler(void) __attribute__ ((weak, alias ("dummy_handler")));
 void irq2_handler(void) __attribute__ ((weak, alias ("dummy_handler")));
 void irq3_handler(void) __attribute__ ((weak, alias ("dummy_handler")));

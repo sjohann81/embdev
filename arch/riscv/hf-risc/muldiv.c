@@ -1,4 +1,5 @@
 #include <hf-risc.h>
+#include "muldiv.h"
 
 uint32_t __mulsi3(uint32_t a, uint32_t b)
 {

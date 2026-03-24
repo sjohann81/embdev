@@ -1,4 +1,5 @@
 #include <hf-risc.h>
+#include <interrupt.h>
 #include <stdio.h>
 
 #ifndef DEBUG_PORT
