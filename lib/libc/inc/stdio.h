@@ -19,7 +19,6 @@ int vscanf(const char *fmt, va_list args);
 int scanf(const char *fmt, ...);
 int getchar(void);
 int ungetc(int c);
-char *fgets_stdin(char *s, int size);
 #endif
 
 #endif /* _LIBC_STDIO_H */
