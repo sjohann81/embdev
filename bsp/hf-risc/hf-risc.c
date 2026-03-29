@@ -24,9 +24,11 @@ static uart_t uart_console = {
     .dev = (uart_dev_t *)&uart0_dev,
 };
 
-void uart0rx_handler(void)
+void *uart0rx_handler(void)
 {
     uart_irq_handle(&uart_console);
+    
+    return 0;
 }
 
 /* hook to libc stdio (weak symbols) */

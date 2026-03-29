@@ -1,57 +1,59 @@
     .section .text.init
-    .global _isr
-_isr:
-    nop                      # this must be a NOP
-    addi sp, sp, -40
-    sw ra, 0(sp)
-    sw t0, 4(sp)
-    sw t1, 8(sp)
-    sw t2, 12(sp)
-    sw a0, 16(sp)
-    sw a1, 20(sp)
-    sw a2, 24(sp)
-    sw a3, 28(sp)
-    sw a4, 32(sp)
+	.globl _trap_vector
+	.globl _restore_context
+	.align 4
+_trap_vector:
+    nop                         # this must be a NOP
+    sw ra, 4(tp)                # save registers
+    sw sp, 8(tp)
+    sw gp, 12(tp)
+    sw t0, 20(tp)
+    sw t1, 24(tp)
+    sw t2, 28(tp)
+    sw s0, 32(tp)
+    sw s1, 36(tp)
+    sw a0, 40(tp)
+    sw a1, 44(tp)
+    sw a2, 48(tp)
+    sw a3, 52(tp)
+    sw a4, 56(tp)
 
-    li a5, 0xf0000040        # read IRQ_EPC
+    li a5, 0xf0000040           # read IRQ_EPC
     lw a5, 0(a5)
-    addi a5, a5, -4          # rollback, last opcode (at EPC) was not commited
-    sw a5, 36(sp)
+    addi a5, a5, -4             # last inst was not commited on pipeline
+    sw a5, 64(tp)               # save EPC
     
     lui a1, 0xf0000
-    lw a0, 0x10(a1)          # read IRQ_CAUSE
-    lw a2, 0x20(a1)          # read IRQ_MASK
-    and a0, a0, a2           # pass CAUSE and MASK and the stack pointer to the C handler
-    addi a1, sp, 0
+    lw a0, 0x10(a1)             # read IRQ_CAUSE
+    lw a2, 0x20(a1)             # read IRQ_MASK
+    and a0, a0, a2              # mask CAUSE
+    jal ra, trap_handler         # jump to C interrupt handler
 
-    jal ra, irq_handler      # jump to C handler
+_restore_context:
+    beq a0, zero, _skip_ctx     # default trap returned, just keep tp as is
+	mv tp, a0                   # a0 now points to possibly new context
+_skip_ctx:
+    lw ra, 4(tp)                # restore registers
+    lw sp, 8(tp)
+    lw gp, 12(tp)
+    lw t0, 20(tp)
+    lw t1, 24(tp)
+    lw t2, 28(tp)
+    lw s0, 32(tp)
+    lw s1, 36(tp)
+    lw a0, 40(tp)
+    lw a1, 44(tp)
+    lw a2, 48(tp)
+    lw a3, 52(tp)
+    lw a4, 56(tp)
 
-    lw ra, 0(sp)
-    lw t0, 4(sp)
-    lw t1, 8(sp)
-    lw t2, 12(sp)
-    lw a0, 16(sp)
-    lw a1, 20(sp)
-    lw a2, 24(sp)
-    lw a3, 28(sp)
-    lw a4, 32(sp)
-
-    li a5, 0xf0000030
+    li a5, 0xf0000030           # enable interrupts
     ori a5, a5, 0x1
-    addi sp, sp, 40
     sb a5, 0(a5)
-    lw a5, -4(sp)           # 36(sp)
-
-    jalr zero, a5           # context restored, continue
-
-    .global _interrupt_set
-_interrupt_set:
-    li a1, 0xf0000030
-    lw a2, 0(a1)
-    sw a0, 0(a1)
-    addi a0, a2, 0
-    ret
-
+    
+    lw a5, 64(tp)               # restore EPC
+    jalr zero, a5               # context restored, continue
+    
     .global setjmp
 setjmp:
     sw s0, 0(a0)

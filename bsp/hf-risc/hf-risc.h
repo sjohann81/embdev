@@ -125,6 +125,8 @@ typedef volatile struct __attribute__((packed, aligned(4))) {
 #define MASK_S0CAUSE_UART		(1 << 3)
 #define MASK_S0CAUSE_SPI		(1 << 4)
 #define MASK_S0CAUSE_I2C		(1 << 5)
+#define MASK_S0CAUSE_DAC		(1 << 6)
+#define MASK_S0CAUSE_ADC		(1 << 7)
 
 /* alternate pin configuration masks for PAALTCFG0 */
 #define MASK_TIM1_CH0			(1 << 0)
