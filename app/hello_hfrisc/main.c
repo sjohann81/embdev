@@ -6,8 +6,10 @@ int main(void)
     
     printf("hello world!\n");
     printf("type something, I will echo back...\n");
-    scanf("%49[^\n]", buf);
-    printf(buf);
+    while (1) {
+        scanf("%49[^\n]", buf);
+        printf(buf);
+    }
     
     return 0;
 }
