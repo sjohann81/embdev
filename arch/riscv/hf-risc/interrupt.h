@@ -79,6 +79,8 @@ typedef struct {
     uint32_t epc;
 } trap_frame_t;
 
+void _trap_vector(void);
+void _restore_context(trap_frame_t *ctx);
 trap_frame_t *trap_handler(uint32_t cause);
 
 void syscall(void *arg0, ...);

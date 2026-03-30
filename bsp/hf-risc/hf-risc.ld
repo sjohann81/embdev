@@ -28,13 +28,14 @@ SECTIONS
     .data : {
         _data = .;
         *(.data*)
-        *(.sdata.*)
+        *(.sdata*)
         _edata = .;
     } > RAM
 
     .bss (NOLOAD) : {
         _bss_start = .;
         *(.bss*)
+        *(.sbss*)
         *(COMMON)
         _bss_end = .;
     } > RAM

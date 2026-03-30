@@ -1,5 +1,6 @@
 #include <hf-risc.h>
 #include <interrupt.h>
+#include <bsp.h>
 #include <stdio.h>
 
 #ifndef DEBUG_PORT
@@ -122,4 +123,39 @@ void bsp_delay_us(uint32_t usec)
             delta %= cycles_per_usec;
         }
     }
+}
+
+uint64_t bsp_read_us(void)
+{
+    static uint64_t timeref = 0;
+	static uint32_t tval2 = 0, tref = 0;
+
+	if (tref == 0) TIMER0;
+	if (TIMER0 < tref) tval2++;
+	tref = TIMER0;
+	timeref = ((uint64_t)tval2 << 32) + (uint64_t)TIMER0;
+
+	return (timeref / (CPU_SPEED / 1000000));
+}
+
+void bsp_timer_reset(void)
+{
+	TIMER1 = 0;
+}
+
+void bsp_timer_init(uint32_t tick_rate_hz)
+{
+    TIMER1PRE = TIMERPRE_DIV1024;
+	TIMER1 = 0;
+	TIMER1CTC = (CPU_SPEED / tick_rate_hz) / 1024;
+}
+
+void bsp_timer_start(void)
+{
+    TIMERMASK |= MASK_TIMER1CTC;
+}
+
+void bsp_timer_stop(void)
+{
+    TIMERMASK &= ~MASK_TIMER1CTC;
 }
