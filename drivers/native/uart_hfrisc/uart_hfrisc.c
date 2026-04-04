@@ -1,54 +1,120 @@
-#include "uart_hfrisc.h"
+/*
+ * HF-RISC UART is a very poor implementation of a UART in hardware.
+ * It does not have a way to change data bits, stop bits and more
+ * flexible interrupt system. The registers of each device are very
+ * limited (only a shared TX/RX data register and a baud rate divisor).
+ * The way UARTs are wired on the platform is very limiting, because the
+ * status of UARTs is not defined on a per peripheral status and mask
+ * registers, mapped on each device address space, which would be more
+ * common. This is handled on a *_regs.h file.
+ * 
+ * To make matters worse, there is no TX or RX FIFO in hardware,
+ * so TX interrupts are useless. We will only use a RX software FIFO
+ * when operating this driver in interrupt mode, and hope for the best.
+ * TX will be handled in polling mode only, although technically
+ * supported by the hardware.
+ * 
+ * This driver assumes that only one thread will access an instance
+ * at a time (this can be guaranteed with the use of a mutex if an
+ * RTOS is used). As just one execution context puts data in the FIFO
+ * (ISR) and another context gets data from it (application) the 
+ * implementation of FIFO is lockless.
+ */
 
-/* port registers */
+#include "uart_hal.h"
+#include "uart_hfrisc.h"
+#include "uart_hfrisc_regs.h"
+#include <stdbool.h>
+#include <stdatomic.h>
+
+/* driver internal function prototypes */
+static inline hfrisc_uart_regs_t *get_regs(uart_dev_t *dev);
+static inline hfrisc_uart_irq_regs_t *get_irq_regs(uart_dev_t *dev);
+
+static bool fifo_full(hfrisc_uart_fifo_t *fifo);
+static bool fifo_empty(hfrisc_uart_fifo_t *fifo);
+static uart_status_t fifo_put(hfrisc_uart_fifo_t *fifo, char c);
+static uart_status_t fifo_get(hfrisc_uart_fifo_t *fifo, char *c);
+
+static uart_status_t driver_irq_handler(uart_dev_t *dev);
+static uart_status_t driver_init(uart_dev_t *dev);
+static uart_status_t driver_tx_busy(uart_dev_t *dev);
+static uart_status_t driver_rx_data(uart_dev_t *dev);
+static uart_status_t driver_tx(uart_dev_t *dev, char ch);
+static uart_status_t driver_rx(uart_dev_t *dev, char *ch);
+
+
+/* port and interrupt registers access */
 static inline hfrisc_uart_regs_t *get_regs(uart_dev_t *dev)
 {
     return (hfrisc_uart_regs_t *)dev->config->base_addr;
 }
 
+static inline hfrisc_uart_irq_regs_t *get_irq_regs(uart_dev_t *dev)
+{
+    return (hfrisc_uart_irq_regs_t *)dev->config->int_base_addr;
+}
+
+
 /* software FIFO control */
-static int fifo_full(hfrisc_uart_fifo_t *fifo)
+static bool fifo_full(hfrisc_uart_fifo_t *fifo)
 {
     return (((fifo->tail + 1) & (UART_FIFO_SIZE - 1)) == fifo->head);
 }
 
-static int fifo_empty(hfrisc_uart_fifo_t *fifo)
+static bool fifo_empty(hfrisc_uart_fifo_t *fifo)
 {
     return fifo->head == fifo->tail;
 }
 
-static void fifo_put(hfrisc_uart_fifo_t *fifo, char c)
+static uart_status_t fifo_put(hfrisc_uart_fifo_t *fifo, char c)
 {
     if (!fifo_full(fifo)) {
         fifo->data[fifo->tail] = c;
+        atomic_signal_fence(memory_order_release);
         fifo->tail = (fifo->tail + 1) & (UART_FIFO_SIZE - 1);
+        
+        return UART_OK;
+    } else {
+
+        return UART_ERR_OVF;
     }
 }
 
-static char fifo_get(hfrisc_uart_fifo_t *fifo)
+static uart_status_t fifo_get(hfrisc_uart_fifo_t *fifo, char *c)
 {
-    char c = 0;
-    
     if (!fifo_empty(fifo)) {
-        c = fifo->data[fifo->head];
+        *c = fifo->data[fifo->head];
+        atomic_signal_fence(memory_order_release);
         fifo->head = (fifo->head + 1) & (UART_FIFO_SIZE - 1);
+        
+        return UART_OK;
+    } else {
+
+        return UART_ERR_OVF;
     }
-    
-    return c;
 }
+
 
 /* generic interrupt handler */
-static uart_status_t uirq_handler(uart_dev_t *dev)
+static uart_status_t driver_irq_handler(uart_dev_t *dev)
 {
     hfrisc_uart_regs_t *regs = get_regs(dev);
+    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uint32_t rx_mask = STATUS_RXDATA << (dev->config->port << 1);
+    uart_status_t err;
     char ch;
     
     /* if RX interrupts are enabled and RX FIFO is not full,
      * take one char received from the wire and put it on FIFO */
-    if (dev->config->irq_mask & dev->config->rx_mask) {
-        if (!fifo_full(&dev->rx_fifo)) {
-            ch = regs->RXR;
-            fifo_put(&dev->rx_fifo, ch);
+    if (dev->config->irq_mode == INT_ENABLE) {
+        while (irq_regs->CAUSE & rx_mask) {
+            if (!fifo_full(&dev->rx_fifo)) {
+                ch = regs->RXR;
+                err = fifo_put(&dev->rx_fifo, ch);
+                
+                if (err != UART_OK) return err;
+            }
         }
     }
     
@@ -56,9 +122,11 @@ static uart_status_t uirq_handler(uart_dev_t *dev)
 }
 
 /* low level driver API implementation */
-static uart_status_t uinit(uart_dev_t *dev)
+static uart_status_t driver_init(uart_dev_t *dev)
 {
     hfrisc_uart_regs_t *regs = get_regs(dev);
+    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uint32_t rx_mask = STATUS_RXDATA << (dev->config->port << 1);
     
 	regs->DIV = dev->config->clock_hz / dev->config->baud_rate;
 	regs->TXR = 0;
@@ -66,53 +134,67 @@ static uart_status_t uinit(uart_dev_t *dev)
     dev->rx_fifo.head = 0;
     dev->rx_fifo.tail = 0;
     
-    // enable RX interrupts
-    if (dev->config->irq_mask)
-        UARTMASK |= dev->config->irq_mask & dev->config->rx_mask;
+    if (dev->config->irq_mode == INT_ENABLE)
+        irq_regs->MASK |= rx_mask;
+    else
+        irq_regs->MASK &= ~rx_mask;
         
     return UART_OK;
 }
 
-static uart_status_t utx_busy(uart_dev_t *dev)
+static uart_status_t driver_tx_busy(uart_dev_t *dev)
 {
-    if (UARTCAUSE & dev->config->tx_mask)
+    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uint32_t tx_mask = STATUS_TXBUSY << (dev->config->port << 1);
+    
+    if (irq_regs->CAUSE & tx_mask)
             return UART_TX_BUSY;
 
     return UART_OK;
 }
 
-static uart_status_t urx_data(uart_dev_t *dev)
+static uart_status_t driver_rx_data(uart_dev_t *dev)
 {
-    if (dev->config->irq_mask & dev->config->rx_mask) {
+    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uint32_t rx_mask = STATUS_RXDATA << (dev->config->port << 1);
+    
+    if (dev->config->irq_mode == INT_ENABLE) {
         if (!fifo_empty(&dev->rx_fifo))
             return UART_RX_DATA;
     } else {
-        if (UARTCAUSE & dev->config->rx_mask)
+        if (irq_regs->CAUSE & rx_mask)
             return UART_RX_DATA;
     }
 
     return UART_OK;
 }
 
-static uart_status_t utx(uart_dev_t *dev, char ch)
+static uart_status_t driver_tx(uart_dev_t *dev, char ch)
 {
     hfrisc_uart_regs_t *regs = get_regs(dev);
+    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uint32_t tx_mask = STATUS_TXBUSY << (dev->config->port << 1);
     
-    while (UARTCAUSE & dev->config->tx_mask);
+    while (irq_regs->CAUSE & tx_mask);
     regs->TXR = ch;
     
     return UART_OK;
 }
 
-static uart_status_t urx(uart_dev_t *dev, char *ch)
+static uart_status_t driver_rx(uart_dev_t *dev, char *ch)
 {
     hfrisc_uart_regs_t *regs = get_regs(dev);
+    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uint32_t rx_mask = STATUS_RXDATA << (dev->config->port << 1);
+    uart_status_t err;
     
-    if (dev->config->irq_mask & dev->config->rx_mask) {
+    if (dev->config->irq_mode == INT_ENABLE) {
         while (fifo_empty(&dev->rx_fifo));
-        *ch = fifo_get(&dev->rx_fifo);
+        err = fifo_get(&dev->rx_fifo, ch);
+        
+        if (err != UART_OK) return err;
     } else {
-        while (!(UARTCAUSE & dev->config->rx_mask));
+        while (!(irq_regs->CAUSE & rx_mask));
         *ch = regs->RXR;
     }
     
@@ -121,10 +203,10 @@ static uart_status_t urx(uart_dev_t *dev, char *ch)
 
 /* low level driver callbacks */
 const uart_ops_t hfrisc_uart_ops = {
-    .init = uinit,
-    .tx_busy = utx_busy,
-    .rx_data = urx_data,
-    .tx = utx,
-    .rx = urx,
-    .irq_handler = uirq_handler,
+    .init = driver_init,
+    .tx_busy = driver_tx_busy,
+    .rx_data = driver_rx_data,
+    .tx = driver_tx,
+    .rx = driver_rx,
+    .irq_handler = driver_irq_handler,
 };

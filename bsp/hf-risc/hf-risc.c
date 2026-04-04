@@ -4,16 +4,17 @@
 #include <stdio.h>
 
 #ifndef DEBUG_PORT
+#include <uart_hal.h>
 #include <uart_hfrisc.h>
 
 /* UART configuration */
 static const hfrisc_uart_config_t uart0_config = {
-    .base_addr  = UART0_BASE,
-    .baud_rate  = BAUD_57600,
-    .clock_hz   = CPU_SPEED,
-    .tx_mask    = UART0_TXBUSY,
-    .rx_mask    = UART0_RXDATA,
-    .irq_mask   = UART0_RXDATA,     // comment this line for polling mode
+    .port           = 0,
+    .base_addr      = UART0_BASE,
+    .int_base_addr  = UART_BASE,
+    .clock_hz       = CPU_SPEED,
+    .irq_mode       = INT_ENABLE,
+    .baud_rate      = BAUD_57600,
 };
 
 static hfrisc_uart_dev_t uart0_dev = {

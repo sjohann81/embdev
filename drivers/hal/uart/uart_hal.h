@@ -49,13 +49,20 @@ typedef enum {
     PARITY_SPACE,
 } uart_parity_t;
 
+/* interrupt mode */
+typedef enum {
+    INT_DISABLE = 0,
+    INT_ENABLE,
+} uart_irq_t;
+
 /* error codes */
 typedef enum {
     UART_OK      =  0,
     UART_ERR     = -1,
-    UART_TIMEOUT = -2,
-    UART_TX_BUSY = -3,
-    UART_RX_DATA = -4,
+    UART_ERR_OVF = -2,
+    UART_TIMEOUT = -3,
+    UART_TX_BUSY = -4,
+    UART_RX_DATA = -5,
 } uart_status_t;
 
 /* low level driver callbacks */
