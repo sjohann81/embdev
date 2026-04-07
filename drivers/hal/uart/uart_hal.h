@@ -82,37 +82,37 @@ typedef struct {
 } uart_t;
 
 /* HAL functions */
-static inline uart_status_t uart_init(uart_t *u)
+static inline uart_status_t uart_init(const uart_t *u)
 {
     return u->ops->init(u->dev);
 }
 
-static inline uart_status_t uart_tx_busy(uart_t *u)
+static inline uart_status_t uart_tx_busy(const uart_t *u)
 {
     return u->ops->tx_busy(u->dev);
 }
 
-static inline uart_status_t uart_rx_data(uart_t *u)
+static inline uart_status_t uart_rx_data(const uart_t *u)
 {
     return u->ops->rx_data(u->dev);
 }
 
-static inline uart_status_t uart_tx(uart_t *u, char ch)
+static inline uart_status_t uart_tx(const uart_t *u, char ch)
 {
     return u->ops->tx(u->dev, ch);
 }
 
-static inline uart_status_t uart_rx(uart_t *u, char *ch)
+static inline uart_status_t uart_rx(const uart_t *u, char *ch)
 {
     return u->ops->rx(u->dev, ch);
 }
 
-static inline uart_status_t uart_irq_handle(uart_t *u)
+static inline uart_status_t uart_irq_handle(const uart_t *u)
 {
     return u->ops->irq_handler(u->dev);
 }
 
-uart_status_t uart_read(uart_t *u, void *buf, size_t count);
-uart_status_t uart_write(uart_t *u, void *buf, size_t count);
+uart_status_t uart_read(const uart_t *u, void *buf, size_t count);
+uart_status_t uart_write(const uart_t *u, void *buf, size_t count);
 
 #endif /* UART_H */

@@ -1,6 +1,6 @@
 #include "uart_hal.h"
 
-uart_status_t uart_read(uart_t *u, void *buf, size_t count)
+uart_status_t uart_read(const uart_t *u, void *buf, size_t count)
 {
     size_t i;
     char ch, *p;
@@ -23,7 +23,7 @@ uart_status_t uart_read(uart_t *u, void *buf, size_t count)
     return val;
 }
 
-uart_status_t uart_write(uart_t *u, void *buf, size_t count)
+uart_status_t uart_write(const uart_t *u, void *buf, size_t count)
 {
     size_t i;
     char *p;
