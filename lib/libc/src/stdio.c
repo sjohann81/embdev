@@ -185,6 +185,25 @@ __attribute__((weak)) int puts(const char *s)
 	return 0;
 }
 
+__attribute__((weak)) char *gets(char *str)
+{
+    if (str == NULL)
+        return NULL;
+
+    int c;
+    char *ptr = str;
+
+    while ((c = getchar()) != EOF && c != '\n')
+        *ptr++ = (char)c;
+
+    *ptr = '\0';
+
+    if (c == EOF && ptr == str)
+        return NULL;
+
+    return str;
+}
+
 #define PRINTF_BUFFER_SIZE 256
 
 int printf(const char *fmt, ...)

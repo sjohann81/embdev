@@ -10,6 +10,7 @@ int sprintf(char *buf, const char *fmt, ...);
 int printf(const char *fmt, ...);
 int putchar(int c);
 int puts(const char *s);
+char *gets(char *str);
 
 #ifdef STDIO_EXTRA
 #define EOF	(-1)
