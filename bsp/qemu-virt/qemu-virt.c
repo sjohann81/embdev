@@ -92,21 +92,49 @@ __attribute__((weak)) int bsp_init(void)
     return 0;
 }
 
-/* hook to libc stdio (weak symbols) */
-int putchar(int c)
+void uart_putc(char c)
 {
-    /* Wait until THR is empty */
-    while ((*UART_LSR & UART_LSR_THRE) == 0);
+	/* Wait until THR is empty */
+	while ((*UART_LSR & UART_LSR_THRE) == 0);
+	*UART_THR = c;
+}
+
+char uart_getc(void)
+{
+	while ((*UART_LSR & UART_LSR_DR) == 0);
+
+	return *UART_RBR;
+}
+
+int uart_getc_nonblocking(char *c)
+{
+	if ((*UART_LSR & UART_LSR_DR) == 0)
+		return 0;
+
+    *c = *UART_RBR;
     
-    *UART_THR = c;
+    return 1;
+}
+
+int uart_kbhit(void)
+{
+    if ((*UART_LSR & UART_LSR_DR) != 0)
+        return 1;
     
     return 0;
 }
 
 /* hook to libc stdio (weak symbols) */
+int putchar(int c)
+{
+	uart_putc(c);
+	
+	return 0;
+}
+
+/* hook to libc stdio (weak symbols) */
 int getchar(void)
 {
-    while ((*UART_LSR & UART_LSR_DR) == 0);
-
-    return *UART_RBR;
+	return uart_getc();
 }
+

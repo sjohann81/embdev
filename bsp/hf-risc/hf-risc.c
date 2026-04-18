@@ -8,7 +8,7 @@
 #include <uart_hfrisc.h>
 
 /* UART configuration */
-static const hfrisc_uart_config_t uart0_config = {
+static const uart_hfrisc_config_t uart0_config = {
     .port           = 0,
     .base_addr      = UART0_BASE,
     .int_base_addr  = UART_BASE,
@@ -17,13 +17,13 @@ static const hfrisc_uart_config_t uart0_config = {
     .baud_rate      = BAUD_57600,
 };
 
-static hfrisc_uart_dev_t uart0_dev = {
+static uart_hfrisc_dev_t uart0_dev = {
     .config = &uart0_config,
 };
 
 static uart_t uart_console = {
-    .ops = &hfrisc_uart_ops,
-    .dev = (uart_dev_t *)&uart0_dev,
+    .ops = &uart_hfrisc_ops,
+    .dev = &uart0_dev,
 };
 
 void *uart0rx_handler(void)
@@ -33,16 +33,21 @@ void *uart0rx_handler(void)
     return 0;
 }
 
-/* hook to libc stdio (weak symbols) */
-int putchar(int c)
+__attribute__((weak)) int bsp_init(void)
 {
-    uart_tx(&uart_console, c);
-   
+    /* select UART0 pins */
+   	PAALTCFG0 |= (MASK_UART0_TX | MASK_UART0_RX);
+    uart_init(&uart_console);
+    
     return 0;
 }
 
-/* hook to libc stdio (weak symbols) */
-int getchar(void)
+void uart_putc(char c)
+{
+    uart_tx(&uart_console, c);
+}
+
+char uart_getc(void)
 {
     char c;
     
@@ -51,13 +56,36 @@ int getchar(void)
     return c;
 }
 
-__attribute__((weak)) int bsp_init(void)
+int uart_getc_nonblocking(char *c)
 {
-    /* select UART0 pins */
-   	PAALTCFG0 |= (MASK_UART0_TX | MASK_UART0_RX);
-    uart_init(&uart_console);
+    if (uart_rx_data(&uart_console) != UART_RX_DATA)
+        return 0;
     
-    return 0;
+    uart_rx(&uart_console, c);
+    
+    return 1;
+}
+
+int uart_kbhit(void)
+{
+    if (uart_rx_data(&uart_console) != UART_RX_DATA)
+        return 0;
+    
+    return 1;
+}
+
+/* hook to libc stdio (weak symbols) */
+int putchar(int c)
+{
+	uart_putc(c);
+	
+	return 0;
+}
+
+/* hook to libc stdio (weak symbols) */
+int getchar(void)
+{
+	return uart_getc();
 }
 
 #else
