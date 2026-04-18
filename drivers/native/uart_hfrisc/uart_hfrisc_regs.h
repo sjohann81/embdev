@@ -17,7 +17,7 @@ typedef struct {
     };
     volatile const uint32_t _reserved[3];
     volatile uint32_t DIV;              // baud rate divisor
-} hfrisc_uart_regs_t;
+} uart_hfrisc_regs_t;
 
 typedef struct {
     volatile const uint32_t _reserved0[0x100];
@@ -26,7 +26,7 @@ typedef struct {
     volatile uint32_t CAUSEINV;
     volatile const uint32_t _reserved2[0x0ff];
     volatile uint32_t MASK;
-} hfrisc_uart_irq_regs_t;
+} uart_hfrisc_irq_regs_t;
 
 /* bit masks for UARTCAUSE, UARTCAUSE_INV and UARTMASK */
 #define STATUS_RXDATA		    (1 << 0)

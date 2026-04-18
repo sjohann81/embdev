@@ -33,13 +33,13 @@ typedef struct {
     uint32_t clock_hz;
     uart_irq_t irq_mode;
     uint32_t baud_rate;
-} hfrisc_uart_config_t;
+} uart_hfrisc_config_t;
 
 /* software FIFO data type */
 typedef struct {
     char data[UART_FIFO_SIZE];
     volatile uint32_t head, tail;
-} hfrisc_uart_fifo_t;
+} uart_hfrisc_fifo_t;
 
 /* HF-RISC UART device
  * 
@@ -47,11 +47,11 @@ typedef struct {
  * FIFO (state). The state of the driver is kept along with the
  * instance, and not the driver itself.
  */
-typedef struct uart_dev {
-    const hfrisc_uart_config_t *config;
-    hfrisc_uart_fifo_t rx_fifo;
-} hfrisc_uart_dev_t;
+typedef struct uart_hfrisc_dev {
+    const uart_hfrisc_config_t *config;
+    uart_hfrisc_fifo_t rx_fifo;
+} uart_hfrisc_dev_t;
 
-extern const uart_ops_t hfrisc_uart_ops;
+extern const uart_ops_t uart_hfrisc_ops;
 
 #endif

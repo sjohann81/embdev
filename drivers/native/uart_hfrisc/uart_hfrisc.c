@@ -28,13 +28,13 @@
 #include <stdatomic.h>
 
 /* driver internal function prototypes */
-static inline hfrisc_uart_regs_t *get_regs(uart_dev_t *dev);
-static inline hfrisc_uart_irq_regs_t *get_irq_regs(uart_dev_t *dev);
+static inline uart_hfrisc_regs_t *get_regs(uart_dev_t *dev);
+static inline uart_hfrisc_irq_regs_t *get_irq_regs(uart_dev_t *dev);
 
-static bool fifo_full(hfrisc_uart_fifo_t *fifo);
-static bool fifo_empty(hfrisc_uart_fifo_t *fifo);
-static uart_status_t fifo_put(hfrisc_uart_fifo_t *fifo, char c);
-static uart_status_t fifo_get(hfrisc_uart_fifo_t *fifo, char *c);
+static bool fifo_full(uart_hfrisc_fifo_t *fifo);
+static bool fifo_empty(uart_hfrisc_fifo_t *fifo);
+static uart_status_t fifo_put(uart_hfrisc_fifo_t *fifo, char c);
+static uart_status_t fifo_get(uart_hfrisc_fifo_t *fifo, char *c);
 
 static uart_status_t driver_irq_handler(uart_dev_t *dev);
 static uart_status_t driver_init(uart_dev_t *dev);
@@ -43,31 +43,36 @@ static uart_status_t driver_rx_data(uart_dev_t *dev);
 static uart_status_t driver_tx(uart_dev_t *dev, char ch);
 static uart_status_t driver_rx(uart_dev_t *dev, char *ch);
 
-
-/* port and interrupt registers access */
-static inline hfrisc_uart_regs_t *get_regs(uart_dev_t *dev)
+/* abstract type adapter */
+static inline uart_hfrisc_dev_t *dev_adapter(uart_dev_t *dev)
 {
-    return (hfrisc_uart_regs_t *)dev->config->base_addr;
+    return (uart_hfrisc_dev_t *)dev;
 }
 
-static inline hfrisc_uart_irq_regs_t *get_irq_regs(uart_dev_t *dev)
+/* port and interrupt registers access */
+static inline uart_hfrisc_regs_t *get_regs(uart_dev_t *dev)
 {
-    return (hfrisc_uart_irq_regs_t *)dev->config->int_base_addr;
+    return (uart_hfrisc_regs_t *)dev_adapter(dev)->config->base_addr;
+}
+
+static inline uart_hfrisc_irq_regs_t *get_irq_regs(uart_dev_t *dev)
+{
+    return (uart_hfrisc_irq_regs_t *)dev_adapter(dev)->config->int_base_addr;
 }
 
 
 /* software FIFO control */
-static bool fifo_full(hfrisc_uart_fifo_t *fifo)
+static bool fifo_full(uart_hfrisc_fifo_t *fifo)
 {
     return (((fifo->tail + 1) & (UART_FIFO_SIZE - 1)) == fifo->head);
 }
 
-static bool fifo_empty(hfrisc_uart_fifo_t *fifo)
+static bool fifo_empty(uart_hfrisc_fifo_t *fifo)
 {
     return fifo->head == fifo->tail;
 }
 
-static uart_status_t fifo_put(hfrisc_uart_fifo_t *fifo, char c)
+static uart_status_t fifo_put(uart_hfrisc_fifo_t *fifo, char c)
 {
     if (!fifo_full(fifo)) {
         fifo->data[fifo->tail] = c;
@@ -81,7 +86,7 @@ static uart_status_t fifo_put(hfrisc_uart_fifo_t *fifo, char c)
     }
 }
 
-static uart_status_t fifo_get(hfrisc_uart_fifo_t *fifo, char *c)
+static uart_status_t fifo_get(uart_hfrisc_fifo_t *fifo, char *c)
 {
     if (!fifo_empty(fifo)) {
         *c = fifo->data[fifo->head];
@@ -99,19 +104,20 @@ static uart_status_t fifo_get(hfrisc_uart_fifo_t *fifo, char *c)
 /* generic interrupt handler */
 static uart_status_t driver_irq_handler(uart_dev_t *dev)
 {
-    hfrisc_uart_regs_t *regs = get_regs(dev);
-    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
-    uint32_t rx_mask = STATUS_RXDATA << (dev->config->port << 1);
+    uart_hfrisc_regs_t *regs = get_regs(dev);
+    uart_hfrisc_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uart_hfrisc_dev_t *device = dev_adapter(dev);
+    uint32_t rx_mask = STATUS_RXDATA << (device->config->port << 1);
     uart_status_t err;
     char ch;
     
     /* if RX interrupts are enabled and RX FIFO is not full,
      * take one char received from the wire and put it on FIFO */
-    if (dev->config->irq_mode == INT_ENABLE) {
+    if (device->config->irq_mode == INT_ENABLE) {
         while (irq_regs->CAUSE & rx_mask) {
-            if (!fifo_full(&dev->rx_fifo)) {
+            if (!fifo_full(&device->rx_fifo)) {
                 ch = regs->RXR;
-                err = fifo_put(&dev->rx_fifo, ch);
+                err = fifo_put(&device->rx_fifo, ch);
                 
                 if (err != UART_OK) return err;
             }
@@ -124,17 +130,18 @@ static uart_status_t driver_irq_handler(uart_dev_t *dev)
 /* low level driver API implementation */
 static uart_status_t driver_init(uart_dev_t *dev)
 {
-    hfrisc_uart_regs_t *regs = get_regs(dev);
-    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
-    uint32_t rx_mask = STATUS_RXDATA << (dev->config->port << 1);
+    uart_hfrisc_regs_t *regs = get_regs(dev);
+    uart_hfrisc_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uart_hfrisc_dev_t *device = dev_adapter(dev);
+    uint32_t rx_mask = STATUS_RXDATA << (device->config->port << 1);
     
-	regs->DIV = dev->config->clock_hz / dev->config->baud_rate;
+	regs->DIV = device->config->clock_hz / device->config->baud_rate;
 	regs->TXR = 0;
 
-    dev->rx_fifo.head = 0;
-    dev->rx_fifo.tail = 0;
+    device->rx_fifo.head = 0;
+    device->rx_fifo.tail = 0;
     
-    if (dev->config->irq_mode == INT_ENABLE)
+    if (device->config->irq_mode == INT_ENABLE)
         irq_regs->MASK |= rx_mask;
     else
         irq_regs->MASK &= ~rx_mask;
@@ -144,8 +151,9 @@ static uart_status_t driver_init(uart_dev_t *dev)
 
 static uart_status_t driver_tx_busy(uart_dev_t *dev)
 {
-    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
-    uint32_t tx_mask = STATUS_TXBUSY << (dev->config->port << 1);
+    uart_hfrisc_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uart_hfrisc_dev_t *device = dev_adapter(dev);
+    uint32_t tx_mask = STATUS_TXBUSY << (device->config->port << 1);
     
     if (irq_regs->CAUSE & tx_mask)
             return UART_TX_BUSY;
@@ -155,11 +163,12 @@ static uart_status_t driver_tx_busy(uart_dev_t *dev)
 
 static uart_status_t driver_rx_data(uart_dev_t *dev)
 {
-    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
-    uint32_t rx_mask = STATUS_RXDATA << (dev->config->port << 1);
+    uart_hfrisc_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uart_hfrisc_dev_t *device = dev_adapter(dev);
+    uint32_t rx_mask = STATUS_RXDATA << (device->config->port << 1);
     
-    if (dev->config->irq_mode == INT_ENABLE) {
-        if (!fifo_empty(&dev->rx_fifo))
+    if (device->config->irq_mode == INT_ENABLE) {
+        if (!fifo_empty(&device->rx_fifo))
             return UART_RX_DATA;
     } else {
         if (irq_regs->CAUSE & rx_mask)
@@ -171,9 +180,10 @@ static uart_status_t driver_rx_data(uart_dev_t *dev)
 
 static uart_status_t driver_tx(uart_dev_t *dev, char ch)
 {
-    hfrisc_uart_regs_t *regs = get_regs(dev);
-    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
-    uint32_t tx_mask = STATUS_TXBUSY << (dev->config->port << 1);
+    uart_hfrisc_regs_t *regs = get_regs(dev);
+    uart_hfrisc_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uart_hfrisc_dev_t *device = dev_adapter(dev);
+    uint32_t tx_mask = STATUS_TXBUSY << (device->config->port << 1);
     
     while (irq_regs->CAUSE & tx_mask);
     regs->TXR = ch;
@@ -183,14 +193,15 @@ static uart_status_t driver_tx(uart_dev_t *dev, char ch)
 
 static uart_status_t driver_rx(uart_dev_t *dev, char *ch)
 {
-    hfrisc_uart_regs_t *regs = get_regs(dev);
-    hfrisc_uart_irq_regs_t *irq_regs = get_irq_regs(dev);
-    uint32_t rx_mask = STATUS_RXDATA << (dev->config->port << 1);
+    uart_hfrisc_regs_t *regs = get_regs(dev);
+    uart_hfrisc_irq_regs_t *irq_regs = get_irq_regs(dev);
+    uart_hfrisc_dev_t *device = dev_adapter(dev);
+    uint32_t rx_mask = STATUS_RXDATA << (device->config->port << 1);
     uart_status_t err;
     
-    if (dev->config->irq_mode == INT_ENABLE) {
-        while (fifo_empty(&dev->rx_fifo));
-        err = fifo_get(&dev->rx_fifo, ch);
+    if (device->config->irq_mode == INT_ENABLE) {
+        while (fifo_empty(&device->rx_fifo));
+        err = fifo_get(&device->rx_fifo, ch);
         
         if (err != UART_OK) return err;
     } else {
@@ -202,7 +213,7 @@ static uart_status_t driver_rx(uart_dev_t *dev, char *ch)
 }
 
 /* low level driver callbacks */
-const uart_ops_t hfrisc_uart_ops = {
+const uart_ops_t uart_hfrisc_ops = {
     .init = driver_init,
     .tx_busy = driver_tx_busy,
     .rx_data = driver_rx_data,

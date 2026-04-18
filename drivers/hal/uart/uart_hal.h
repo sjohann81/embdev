@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 /* the abstract UART device type */
-typedef struct uart_dev uart_dev_t;
+typedef void uart_dev_t;
 
 /* common baud rates */
 typedef enum {
