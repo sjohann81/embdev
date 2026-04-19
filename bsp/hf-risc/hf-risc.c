@@ -13,8 +13,8 @@ static const uart_hfrisc_config_t uart0_config = {
     .base_addr      = UART0_BASE,
     .int_base_addr  = UART_BASE,
     .clock_hz       = CPU_SPEED,
-    .irq_mode       = INT_ENABLE,
-    .baud_rate      = BAUD_57600,
+    .irq_mode       = UART_IRQ_DISABLE,
+    .baud_rate      = UART_BAUD_57600,
 };
 
 static uart_hfrisc_dev_t uart0_dev = {
@@ -25,13 +25,6 @@ static uart_t uart_console = {
     .ops = &uart_hfrisc_ops,
     .dev = &uart0_dev,
 };
-
-void *uart0rx_handler(void)
-{
-    uart_irq_handle(&uart_console);
-    
-    return 0;
-}
 
 __attribute__((weak)) int bsp_init(void)
 {

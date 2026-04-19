@@ -9,50 +9,50 @@ typedef void uart_dev_t;
 
 /* common baud rates */
 typedef enum {
-    BAUD_110 = 110,
-    BAUD_300 = 300,
-    BAUD_1200 = 1200,
-    BAUD_2400 = 2400,
-    BAUD_4800 = 4800,
-    BAUD_9600 = 9600,
-    BAUD_19200 = 19200,
-    BAUD_38400 = 38400,
-    BAUD_57600 = 57600,
-    BAUD_115200 = 115200,
-    BAUD_128000 = 128000,
-    BAUD_230400 = 230400,
-    BAUD_460800 = 460800,
-    BAUD_921600 = 921600,
+    UART_BAUD_110 = 110,
+    UART_BAUD_300 = 300,
+    UART_BAUD_1200 = 1200,
+    UART_BAUD_2400 = 2400,
+    UART_BAUD_4800 = 4800,
+    UART_BAUD_9600 = 9600,
+    UART_BAUD_19200 = 19200,
+    UART_BAUD_38400 = 38400,
+    UART_BAUD_57600 = 57600,
+    UART_BAUD_115200 = 115200,
+    UART_BAUD_128000 = 128000,
+    UART_BAUD_230400 = 230400,
+    UART_BAUD_460800 = 460800,
+    UART_BAUD_921600 = 921600,
 } uart_rate_t;
 
 /* data bits */
 typedef enum {
-    DATA_BITS_5 = 5,
-    DATA_BITS_6 = 6,
-    DATA_BITS_7 = 7,
-    DATA_BITS_8 = 8,
-    DATA_BITS_9 = 9,
+    UART_DATA_BITS_5 = 5,
+    UART_DATA_BITS_6 = 6,
+    UART_DATA_BITS_7 = 7,
+    UART_DATA_BITS_8 = 8,
+    UART_DATA_BITS_9 = 9,
 } uart_bits_t;
 
 /* stop bits */
 typedef enum {
-    STOP_BITS_1 = 1,
-    STOP_BITS_2 = 2,
+    UART_STOP_BITS_1 = 1,
+    UART_STOP_BITS_2 = 2,
 } uart_stop_t;
 
 /* parity mode */
 typedef enum {
-    PARITY_NONE = 0,
-    PARITY_ODD,
-    PARITY_EVEN,
-    PARITY_MARK,
-    PARITY_SPACE,
+    UART_PARITY_NONE = 0,
+    UART_PARITY_ODD,
+    UART_PARITY_EVEN,
+    UART_PARITY_MARK,
+    UART_PARITY_SPACE,
 } uart_parity_t;
 
 /* interrupt mode */
 typedef enum {
-    INT_DISABLE = 0,
-    INT_ENABLE,
+    UART_IRQ_DISABLE = 0,
+    UART_IRQ_ENABLE,
 } uart_irq_t;
 
 /* error codes */

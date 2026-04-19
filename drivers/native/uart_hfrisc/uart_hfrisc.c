@@ -113,7 +113,7 @@ static uart_status_t driver_irq_handler(uart_dev_t *dev)
     
     /* if RX interrupts are enabled and RX FIFO is not full,
      * take one char received from the wire and put it on FIFO */
-    if (device->config->irq_mode == INT_ENABLE) {
+    if (device->config->irq_mode == UART_IRQ_ENABLE) {
         while (irq_regs->CAUSE & rx_mask) {
             if (!fifo_full(&device->rx_fifo)) {
                 ch = regs->RXR;
@@ -141,7 +141,7 @@ static uart_status_t driver_init(uart_dev_t *dev)
     device->rx_fifo.head = 0;
     device->rx_fifo.tail = 0;
     
-    if (device->config->irq_mode == INT_ENABLE)
+    if (device->config->irq_mode == UART_IRQ_ENABLE)
         irq_regs->MASK |= rx_mask;
     else
         irq_regs->MASK &= ~rx_mask;
@@ -167,7 +167,7 @@ static uart_status_t driver_rx_data(uart_dev_t *dev)
     uart_hfrisc_dev_t *device = dev_adapter(dev);
     uint32_t rx_mask = STATUS_RXDATA << (device->config->port << 1);
     
-    if (device->config->irq_mode == INT_ENABLE) {
+    if (device->config->irq_mode == UART_IRQ_ENABLE) {
         if (!fifo_empty(&device->rx_fifo))
             return UART_RX_DATA;
     } else {
@@ -199,7 +199,7 @@ static uart_status_t driver_rx(uart_dev_t *dev, char *ch)
     uint32_t rx_mask = STATUS_RXDATA << (device->config->port << 1);
     uart_status_t err;
     
-    if (device->config->irq_mode == INT_ENABLE) {
+    if (device->config->irq_mode == UART_IRQ_ENABLE) {
         while (fifo_empty(&device->rx_fifo));
         err = fifo_get(&device->rx_fifo, ch);
         
