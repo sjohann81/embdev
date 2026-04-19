@@ -54,9 +54,10 @@ typedef void (*gpio_cb_t)(uint8_t pin, void *user);
 /* status / error codes */
 typedef enum {
     GPIO_OK = 0,
-    GPIO_ERR_INVALID_PORT,
-    GPIO_ERR_INVALID_PIN,
-    GPIO_ERR_IO,
+    GPIO_ERR_IO = -1,
+    GPIO_ERR_INVALID_PORT = -2,
+    GPIO_ERR_INVALID_PIN = -3,
+    GPIO_ERR_INVALID_CFG = -4,
 } gpio_status_t;
 
 /* low level driver callbacks */
@@ -74,7 +75,7 @@ typedef struct {
     gpio_status_t (*toggle_port)(gpio_dev_t *dev, uint32_t mask);
     /* interrupt operations */
     gpio_status_t (*irq_attach) (gpio_dev_t *dev, uint8_t pin,
-        gpio_irq_trigger_t trig, gpio_cb_t *callback, void *user);
+        gpio_irq_trigger_t trig, gpio_cb_t callback, void *user);
     gpio_status_t (*irq_handler)(gpio_dev_t *dev);
 } gpio_ops_t;
 
@@ -85,6 +86,11 @@ typedef struct {
 } gpio_t;
 
 /* HAL functions */
+static inline gpio_status_t gpio_init(const gpio_t *g)
+{
+    return g->ops->init(g->dev);
+}
+
 static inline gpio_status_t gpio_config(const gpio_t *g, uint8_t pin, const gpio_config_t *cfg)
 {
     return g->ops->config(g->dev, pin, cfg);
@@ -117,7 +123,7 @@ static inline gpio_status_t gpio_read_port(const gpio_t *g, uint32_t *vals)
 
 static inline gpio_status_t gpio_toggle_port(const gpio_t *g, uint32_t mask)
 {
-    return g->ops->write_port(g->dev, mask, vals);
+    return g->ops->toggle_port(g->dev, mask);
 }
 
 static inline gpio_status_t gpio_irq_attach(const gpio_t *g, uint8_t pin,
