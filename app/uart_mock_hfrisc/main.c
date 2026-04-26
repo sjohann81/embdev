@@ -11,7 +11,7 @@ static const uart_hfrisc_config_t hfrisc_cfg = {
     .base_addr      = UART0_BASE,
     .int_base_addr  = UART_BASE,
     .clock_hz       = CPU_SPEED,
-    .irq_mode       = UART_IRQ_ENABLE,
+    .irq_mode       = UART_IRQ_DISABLE,
     .baud_rate      = UART_BAUD_57600,
 };
 
@@ -23,13 +23,6 @@ const uart_t uart0 = {
     .ops = &uart_hfrisc_ops,
     .dev = &hfrisc_dev,
 };
-
-void *uart0rx_handler(void)
-{
-    uart_irq_handle(&uart0);
-    
-    return 0;
-}
 
 /* UART mock driver */
 static const uart_mock_config_t mock_cfg = {

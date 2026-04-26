@@ -76,12 +76,15 @@ static uart_status_t fifo_put(uart_hfrisc_fifo_t *fifo, char c)
 {
     if (!fifo_full(fifo)) {
         fifo->data[fifo->tail] = c;
+#ifdef MULTICORE
+        atomic_thread_fence(memory_order_release);
+#else
         atomic_signal_fence(memory_order_release);
+#endif
         fifo->tail = (fifo->tail + 1) & (UART_FIFO_SIZE - 1);
         
         return UART_OK;
     } else {
-
         return UART_ERR_OVF;
     }
 }
@@ -90,12 +93,15 @@ static uart_status_t fifo_get(uart_hfrisc_fifo_t *fifo, char *c)
 {
     if (!fifo_empty(fifo)) {
         *c = fifo->data[fifo->head];
-        atomic_signal_fence(memory_order_release);
+#ifdef MULTICORE
+        atomic_thread_fence(memory_order_acquire);
+#else
+        atomic_signal_fence(memory_order_acquire);
+#endif
         fifo->head = (fifo->head + 1) & (UART_FIFO_SIZE - 1);
         
         return UART_OK;
     } else {
-
         return UART_ERR_OVF;
     }
 }
@@ -112,15 +118,15 @@ static uart_status_t driver_irq_handler(uart_dev_t *dev)
     char ch;
     
     /* if RX interrupts are enabled and RX FIFO is not full,
-     * take one char received from the wire and put it on FIFO */
+     * take one char received from the wire and put it on FIFO.
+     * there is no hw FIFO (only one register buffer), so this is
+     * the only chance we have. */
     if (device->config->irq_mode == UART_IRQ_ENABLE) {
-        while (irq_regs->CAUSE & rx_mask) {
-            if (!fifo_full(&device->rx_fifo)) {
-                ch = regs->RXR;
-                err = fifo_put(&device->rx_fifo, ch);
+        if (irq_regs->CAUSE & rx_mask) {
+            ch = regs->RXR;
+            err = fifo_put(&device->rx_fifo, ch);
                 
-                if (err != UART_OK) return err;
-            }
+            if (err != UART_OK) return err;
         }
     }
     
