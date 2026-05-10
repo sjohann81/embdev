@@ -5,7 +5,7 @@
 _trap_vector:
 	# Save current context
 	# We use mscratch to hold the pointer to the current task's context struct
-	csrr t6, mscratch
+    csrrw t6, mscratch, t6              # swap t6 and mscratch atomically
 
 	sd ra, 8(t6)
 	sd sp, 16(t6)
@@ -38,9 +38,10 @@ _trap_vector:
 	sd t4, 232(t6)
 	sd t5, 240(t6)
 
-	# Save the original t6 (x31)
+	# Save the original t6 (x31) and restore mscratch
 	csrr t5, mscratch
 	sd t5, 248(t6)
+    csrw  mscratch, t6
 
 	# Save control registers
 	csrr t0, mepc

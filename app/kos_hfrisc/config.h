@@ -6,3 +6,4 @@
 #define STACK_GUARD             0xDEADBEEF
 #define STACK_GUARD_WORDS       4
 #define MAX_EVENT_GROUPS        8
+#define HAS_USER_MODE           0

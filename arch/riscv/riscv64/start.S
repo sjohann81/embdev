@@ -23,6 +23,12 @@ _clear_bss_done:
 	la t0, _trap_vector
 	csrw mtvec, t0
     
+    # Grant U-mode full access to all memory (NAPOT mode)
+    li t0, -1
+    csrw pmpaddr0, t0
+    li t0, 0x0f       # PMP_R (1) | PMP_W (2) | PMP_X (4) | PMP_NAPOT (8)
+    csrw pmpcfg0, t0
+    
     # set up mscratch for context saving on interrupts
     la t0, default_trap_frame
     csrw mscratch, t0

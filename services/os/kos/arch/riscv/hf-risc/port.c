@@ -22,6 +22,10 @@ void port_init_context(void *tcb, void *(*task_ptr)(void *), void *arg, unsigned
 	task->ctx.sp = sp;             		// x2 is sp
 	task->ctx.a0 = (unsigned long)arg;	// a0
 	task->ctx.epc = (unsigned long)task_ptr;
+    
+#if HAS_USER_MODE != 0
+#error "HAS_USER_MODE should be 0 on this port"
+#endif
 }
 
 /* task yield sleeps the cpu - a task will be scheduled after a timer
