@@ -111,6 +111,11 @@ static inline gpio_status_t gpio_toggle(const gpio_t *g, uint8_t pin)
     return g->ops->toggle(g->dev, pin);
 }
 
+static inline gpio_status_t gpio_config_port(const gpio_t *g, uint32_t mask, const gpio_config_t *cfg)
+{
+    return g->ops->config_port(g->dev, mask, cfg);
+}
+
 static inline gpio_status_t gpio_write_port(const gpio_t *g, uint32_t mask, uint32_t vals)
 {
     return g->ops->write_port(g->dev, mask, vals);
@@ -138,3 +143,4 @@ static inline gpio_status_t gpio_irq_handle(const gpio_t *g)
 }
 
 #endif /* GPIO_HAL_H */
+
