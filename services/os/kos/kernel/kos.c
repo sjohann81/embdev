@@ -13,7 +13,11 @@ static void *idle_task(void *arg)
 {
     while (1) {
         idle_hook();
+#if PREEMPTIVE_SCHED == 1
+        task_wait();
+#else
         task_yield();
+#endif
     }
     
     // never reached
@@ -98,6 +102,11 @@ task_t *task_current(void)
 void task_yield()
 {
     port_yield();
+}
+
+void task_wait()
+{
+    port_wait();
 }
 
 void task_delay(unsigned int ticks)
@@ -185,7 +194,9 @@ task_state_t task_get_state(unsigned int task_id)
 void sys_init(void)
 {
     init_hook();
+#if PREEMPTIVE_SCHED == 1
     bsp_timer_init(DEFAULT_TICK_FREQ);
+#endif
 #if HAS_IDLE_TASK == 1
     task_add(&idle_task_tcb, idle_task, "idle", DEFAULT_IDLE_PRIO,
         idle_task_stack, MINIMAL_STACK_SIZE);
@@ -196,7 +207,9 @@ void sys_start(void)
 {
     pcurrtask = ptasks;
     sys_schedule();
+#if PREEMPTIVE_SCHED == 1
     bsp_timer_start();
+#endif
     _restore_context(&pcurrtask->ctx);
 }
 

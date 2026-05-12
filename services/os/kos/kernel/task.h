@@ -33,6 +33,7 @@ int task_delete(unsigned int task_id);
 int task_id(void);
 task_t *task_current(void);
 void task_yield(void);
+void task_wait(void);
 void task_delay(unsigned int ticks);
 int task_suspend(unsigned int task_id);
 int task_resume(unsigned int task_id);
