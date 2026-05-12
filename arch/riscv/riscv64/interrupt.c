@@ -38,6 +38,7 @@ __attribute__ ((weak)) trap_frame_t *trap_handler(uint64_t mcause)
     } else {
         switch (code) {
             case 8:                 // Environment Call from U-mode (ecall)
+            case 11:                // Environment Call from M-mode (ecall)
                 trap_frame_t *caller_frame;
                 __asm__ volatile ("csrr %0, mscratch" : "=r"(caller_frame));
                 caller_frame->mepc += 4;
@@ -62,9 +63,11 @@ __attribute__ ((weak)) trap_frame_t *trap_handler(uint64_t mcause)
                 }
                 break;
             default:
-                printf("Unhandled exception code: %llu\n", code);
+                printf("Unhandled exception code: %u\n", code);
                 __asm__ volatile ("csrr %0, mepc" : "=r"(mepc));
-                printf("mepc=%016llx mtval=%016llx\n", mepc, mtval);
+                printf("mepc=0x%08x%08x mtval=0x%08x%08x\n",
+                    mepc >> 31u, mepc & 0xffffffffu,
+                    mtval >> 31u, mtval & 0xffffffffu);
                 while(1) { __asm__ volatile("wfi"); }
                 break;
         }

@@ -1,3 +1,4 @@
+#define PREEMPTIVE_SCHED        1
 #define DEFAULT_TICK_FREQ       100
 #define PRIO_LEVELS             256
 #define DEFAULT_IDLE_PRIO       (PRIO_LEVELS - 1)

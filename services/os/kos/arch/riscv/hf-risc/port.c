@@ -28,9 +28,27 @@ void port_init_context(void *tcb, void *(*task_ptr)(void *), void *arg, unsigned
 #endif
 }
 
-/* task yield sleeps the cpu - a task will be scheduled after a timer
- * interrupt fires the interrupt and trap handler */
+#define SYS_YIELD   1
+#define SYS_WFI     2
+#define SYS_DIE     3
+
+/* task yield calls the scheduler - a task will be scheduled after a syscall.
+ * exception hardware is, as other things in this CPU, uninplemented,
+ * badly implemented, broken, or all three. we have to disable interrupts
+ * before the ecall and insert two NOPs after it. NOPs are mandatory,
+ * otherwise the ecall will break on return. */
 void port_yield(void)
+{
+    port_di();
+    register long syscall_id __asm__("a0") = SYS_YIELD;
+    __asm volatile ("ecall" : : "r"(syscall_id) : "memory");
+    __asm volatile ("nop");
+    __asm volatile ("nop");
+}
+
+/* task wait sleeps the cpu (in a busy wait =/) - a task will be
+ * scheduled after a timer interrupt fires the interrupt and trap handler */
+void port_wait(void)
 {
     unsigned int currticks = sys_ticks();
     

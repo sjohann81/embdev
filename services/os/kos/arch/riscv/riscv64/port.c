@@ -35,9 +35,16 @@ void port_init_context(void *tcb, void *(*task_ptr)(void *), void *arg, unsigned
 #define SYS_WFI     2
 #define SYS_DIE     3
 
-/* task yield sleeps the cpu - a task will be scheduled after a timer
- * interrupt fires the interrupt and trap handler */
+/* task yield calls the scheduler - a task will be scheduled now */
 void port_yield(void)
+{
+    register long syscall_id __asm__("a7") = SYS_YIELD;
+    __asm volatile ("ecall" : : "r"(syscall_id) : "memory");
+}
+
+/* task wait sleeps the cpu - a task will be scheduled after a timer
+ * interrupt fires the interrupt and trap handler */
+void port_wait(void)
 {
 #if HAS_USER_MODE == 0
 	__asm volatile ("wfi");

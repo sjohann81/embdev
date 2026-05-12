@@ -1,6 +1,7 @@
 #include <hf-risc.h>
 #include <stdio.h>
 #include <interrupt.h>
+#include <bsp.h>
 
 /* Trap frame, trap handler and interrupt handlers
  * 
@@ -267,14 +268,30 @@ void irq_enable(void)
 __attribute__ ((weak)) trap_frame_t *trap_handler(uint32_t cause)
 {
     int32_t i = 0;
+    trap_frame_t *old_frame;
     
+    __asm__ volatile ("mv %0, tp" : "=r"(old_frame));
     frame = NULL;
     
     if (!cause) {               // exception
-        printf("\nexception at %08x\n", default_trap_frame.epc);
-        printf("a0: %08x, a1: %08x, a2: %08x, a3: %08x\n",
-            default_trap_frame.a0, default_trap_frame.a1,
-            default_trap_frame.a2, default_trap_frame.a3);
+        if (old_frame) {
+            switch (old_frame->a0) {
+            case 1:             // SYS_YIELD
+                frame = (trap_frame_t *)timer1ctc_handler();
+                break;
+            case 2:             // SYS_WFI
+                frame = old_frame; 
+                break;
+            case 3:             // SYS_DIE
+                while (1) {
+                }
+                break;
+            default:
+                printf("\nexception at %08x\n", old_frame->epc - 4);
+                printf("a0: %08x, a1: %08x, a2: %08x, a3: %08x ra: %08x\n",
+                    old_frame->a0, old_frame->a1, old_frame->a2, old_frame->a3, old_frame->ra);
+            }
+        }
     } else {                    // interrupt
         do {
             if (cause & 0x1) {

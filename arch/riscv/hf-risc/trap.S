@@ -26,8 +26,9 @@ _trap_vector:
     lui a1, 0xf0000
     lw a0, 0x10(a1)             # read IRQ_CAUSE
     lw a2, 0x20(a1)             # read IRQ_MASK
+    lw a1, 44(tp)               # get syscall code from stack frame
     and a0, a0, a2              # mask CAUSE
-    jal ra, trap_handler         # jump to C interrupt handler
+    jal ra, trap_handler        # jump to C interrupt handler
 
 _restore_context:
     beq a0, zero, _skip_ctx     # default trap returned, just keep tp as is
